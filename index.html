@@ -172,77 +172,10 @@
     <div class="article-entry" itemprop="articleBody">
       
         <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>老早就看到新闻员工通过人脸识别监控老板来摸鱼。</p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/11/6/16e3eb4d88adfbb6?w=580&h=644&f=jpeg&s=101885" alt="QQ截图20191106111157.png"></p>
-<p><img src="https://user-gold-cdn.xitu.io/2019/11/6/16e3eb4d88c22d52?w=216&h=220&f=gif&s=1533464" alt=""><br>    有时候摸鱼太入迷了，经常上班时间玩其他的东西被老板看到。自从在咸鱼上淘了一个树莓派3b,尝试做了一下内网穿透，搭建网站就吃灰了，接下来突发奇想就买了一个摄像头和延长线<br>    <img src="https://user-gold-cdn.xitu.io/2019/11/6/16e3eb4d88ec657a?w=1124&h=255&f=jpeg&s=131893" alt="QQ截图20191105175228.png"><br>    接下来就是敲代码了</p>
-<h3 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h3><ul>
-<li>树莓派3+ python3.7</li>
-<li>win7 python3.6</li>
-</ul>
-<h3 id="过程"><a href="#过程" class="headerlink" title="过程"></a>过程</h3><p>首先树莓派和电脑要在一个内网下面，就是一个路由器下面吧。要在树莓派设置里面开启摄像头，然后安装cv2,cv2有很多依赖库需要手动安装，很是费脑筋。<br>原理介绍一下，人脸识别主要是依赖opencv开源的人脸检测识别分类器，只需要导入就可以了，<br>分类器github下载地址：：<a href="https://github.com/opencv/opencv/tree/master/data/haarcascades" target="_blank" rel="noopener">https://github.com/opencv/opencv/tree/master/data/haarcascades</a><br>把整个项目下载下来解压，找到haarcascade_frontalface_default.xml文件，放在这个脚本文件一起就可以了。不想全部下载文章底部有项目地址可以单独下载。<br>用http访问内网网址的方式通知工作的电脑按下win+d，这需要电脑安装一个服务，我就用最简单的web.py了，安装web.py的时候要指定版本。</p>
-<pre><code>import cv2
-import time
-import requests
-capture = cv2.VideoCapture(0)#获取摄像头对象
-casc_path = &quot;haarcascade_frontalface_default.xml&quot;
-faceCascade = cv2.CascadeClassifier(casc_path)
-color = (0, 255, 0)
-font = cv2.FONT_HERSHEY_SIMPLEX
-
-
-end_time=0
-countdown=0
-while(True):
-    #读取一帧图像
-    ret,frame=capture.read()#第一个返回值是bool值，判断是否有图像，第二个就是图像
-    if ret:
-        #转换为灰度图
-        grey = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faceRects = faceCascade.detectMultiScale(grey, scaleFactor = 1.2, minNeighbors = 3, minSize = (32, 32))#这是一个数组，可以输出来看一下，有人脸的大小范围的参数
-        count = str(len(faceRects))
-
-        if int(count) &gt; 0:      #大于0则检测到人脸
-            start_time = time.time()#要判断发送请求的时间间隔，两次间隔不能少于30秒，不然体验很不好
-            if end_time&lt;1:
-                requests.get(&quot;http://192.168.1.165:8080/&quot;)
-                end_time = time.time()
-            countdown= int(start_time-end_time)   
-            if start_time-end_time&gt;30:
-                requests.get(&quot;http://192.168.1.165:8080/&quot;) #每次重启电脑都要更换内网ip
-                end_time = time.time()
-            for faceRect in faceRects: #绘制框框，单独框出每一张人脸
-                x, y, w, h = faceRect    
-                cv2.rectangle(frame, (x - 10, y - 10), (x + w + 10, y + h + 10), color, 2)                     
-        cv2.putText(frame, &quot;count:&quot;+count, (10, 40), font, 0.8, (0, 255, 255), 2)#添加一个人脸个数的文字显示
-        #显示图像
-        cv2.imshow(&quot;test&quot;, frame)    
-        c = cv2.waitKey(10)#等待退出键
-        if c &amp; 0xFF == ord(&apos;q&apos;):
-          break   </code></pre><p>接下来就是让电脑接受http请求了，要让电脑按win+d,需要pyautogui这个库。刚开始还认为需要shell脚本搜了半天，这个web.py这个库也是百度搜索出来的。集齐了各种库，完全体现了python的简单易用，哈哈</p>
-<pre><code># -*- coding: UTF-8 -*-
-import web
-import pyautogui
-import time
-urls = (
-    &apos;/(.*)&apos;, &apos;hello&apos;
-)
-
-app = web.application(urls, globals())
-
-
-class hello:
-    def GET(self, name):
-
-        pyautogui.keyDown(&apos;win&apos;)
-        pyautogui.keyDown(&apos;d&apos;)
-        pyautogui.keyUp(&apos;d&apos;)
-        pyautogui.keyUp(&apos;win&apos;)
-        print(&quot;执行&quot;)
-        return &quot;go&quot;
-
-if __name__ == &quot;__main__&quot;:
-    app.run()</code></pre><p>下面就是效果图：<br><img src="https://user-gold-cdn.xitu.io/2019/11/6/16e3eb435e119a2e?w=1296&h=758&f=jpeg&s=352099" alt="QQ截图20191106111157.png"><br><img src="https://user-gold-cdn.xitu.io/2019/11/6/16e3eb5e14a6b310?w=804&h=305&f=jpeg&s=140159" alt="QQ截图20191106111405.png"></p>
-<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>很low很土很实用，哈哈，下一步可能会伪装摄像头,给其他摸鱼的同事用用，运行指定软件编辑器，更或者识别特定的人等等。<br>github地址：<a href="https://github.com/koala9527/pi_camera_face_-control``" target="_blank" rel="noopener">https://github.com/koala9527/pi_camera_face_-control``</a></p>
-
+<p><img src="https://user-gold-cdn.xitu.io/2019/11/6/16e3eb4d88c22d52?w=216&h=220&f=gif&s=1533464" alt=""></p>
+        
+          <a class="article-more-a" href="/2019/11/08/%E6%91%B8%E9%B1%BC%E7%A5%9E%E5%99%A8%EF%BC%8C%E6%A0%91%E8%8E%93%E6%B4%BEopencv%E8%AF%86%E5%88%AB%E4%BA%BA%E8%84%B8%EF%BC%8C%E8%87%AA%E5%8A%A8%E6%8E%A7%E5%88%B6%E5%B1%80%E5%9F%9F%E7%BD%91%E7%94%B5%E8%84%91%E6%98%BE%E7%A4%BA%E6%A1%8C%E9%9D%A2/#more">more >></a>
+        
       
 
       
